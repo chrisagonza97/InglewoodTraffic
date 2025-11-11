@@ -1,0 +1,59 @@
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --bg: #0b0d11;
+  --panel: #111418;
+  --text: #e7ecf3;
+  --muted: #9aa4b2;
+  --accent: #4f8cff;
+  --error: #ff6b6b;
+  --border: #1c2128;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 24px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.header h1 { margin: 0; font-size: 20px; }
+
+.toolbar button {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.toolbar button:disabled { opacity: 0.6; cursor: default; }
+
+.section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+.section-header { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.section-header h2 { margin: 0; font-size: 16px; }
+.badge { background: var(--border); color: var(--muted); font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+
+.event-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.event { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
+.event-title { font-weight: 600; margin-bottom: 4px; }
+.event-meta { color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.event-meta a { color: var(--accent); text-decoration: none; }
+.event-meta a:hover { text-decoration: underline; }
+
+.error { color: var(--error); }
+.skeleton { color: var(--muted); }
+.empty { color: var(--muted); padding: 8px; }
+
+.footer { color: var(--muted); margin-top: 24px; }
+
+.tabs { display: flex; gap: 8px; margin: 8px 0 12px; }
+.tab { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.tab.active { outline: 2px solid var(--accent); }
+
+.alert {
+  background: #1a2a17;
+  border: 1px solid #2d4b25;
+  color: #d8f5c0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}

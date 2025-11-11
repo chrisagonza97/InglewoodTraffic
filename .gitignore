@@ -1,0 +1,86 @@
+# ----------------------------
+# Python / FastAPI backend
+# ----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+*.log
+*.sqlite3
+*.db
+
+# Virtual environments
+venv/
+.env/
+.env.*        # any variant (.env.dev, .env.prod)
+.venv/
+ENV/
+env.bak/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ----------------------------
+# Node / Vite frontend
+# ----------------------------
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+frontend/.env.local
+frontend/.env.production
+frontend/.env.development
+frontend/.env.*
+
+# ----------------------------
+# Docker / deployment
+# ----------------------------
+# Local volumes, data, build artifacts
+docker/volumes/
+docker/data/
+pgdata/
+caddy_data/
+caddy_config/
+*.pid
+*.sock
+*.tar
+*.bak
+
+# Compose override or secrets
+docker-compose.override.yml
+docker-compose.prod.yml
+docker-compose.dev.yml
+
+# Ignore local logs
+*.log
+/var/log/*
+logs/
+*.tmp
+
+# ----------------------------
+# OS / system
+# ----------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+Icon?
+$RECYCLE.BIN/
+
+# ----------------------------
+# Git / backup
+# ----------------------------
+*.orig
+*.rej
+*.bak
+*.old
+*.zip
+*.tar.gz
