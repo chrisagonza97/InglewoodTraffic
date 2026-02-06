@@ -16,6 +16,7 @@ InglewoodCrawler/
 ├─ docker-compose.yml
 ├─ requirements.txt
 ├─ .env
+├─ Makefile
 └─ docker/
    ├─ initdb/
    │  ├─ 00_init.sh
@@ -30,7 +31,7 @@ InglewoodCrawler/
 
 ### 0. Activate venv `.env`
 ```bash
-.\venv\Scripts\Activate.ps1  
+.\venv\Scripts\Activate.ps1    
 ```
 
 ### A. Create `.env`
@@ -44,7 +45,7 @@ ING_USER_PASSWORD=adminadmin
 docker compose build
 ```
 
-### C. Start PostgreSQL + Scheduler (runs init scripts automatically)
+### C. Start PostgreSQL + Scheduler + API (runs init scripts automatically)
 ```bash
 docker compose up -d db scheduler api
 docker logs -f igw_db
@@ -89,8 +90,8 @@ docker compose run --rm --entrypoint bash ingest -lc "python check_db.py"
 
 If the init scripts didn’t run or you changed passwords:
 ```bash
-docker compose down -v
-docker compose up -d db scheduler api
+make down
+make up-dev
 ```
 **Warning:** This deletes all DB data.
 
@@ -125,21 +126,23 @@ docker compose up -d db scheduler api
 ## 🧹 6. Clean Shutdown
 
 ```bash
-docker compose down
+make down
 ```
 
 ---
 
-## 🧪 7. Useful Commands
+## 🧪 7. Makefile Commands
 
-| Task | Command |
-|------|----------|
-| View running containers | `docker ps` |
-| View DB logs | `docker logs -f igw_db` |
-| View scheduler logs | `docker logs -f igw_scheduler` |
-| Enter DB shell | `docker exec -it igw_db psql -U postgres -d inglewood` |
-| Rebuild images | `docker compose build` |
-| Remove all containers/volumes | `docker compose down -v` |
+| Task | Command | Description |
+|------|----------|-------------|
+| Start dev stack | `make up-dev` | Spins up DB, API, and scheduler using `.env.dev` |
+| Start prod stack | `make up-prod` | Spins up all services (db + api + scheduler + proxy) |
+| Stop everything | `make down` | Stops and removes containers |
+| Show logs | `make logs` | Streams logs for all services |
+| Rebuild images | `make rebuild` | Rebuilds all Docker images |
+| Check health | `make check` | Calls FastAPI health endpoint |
+| DB shell | `make shell-db` | Opens psql shell inside DB |
+| API shell | `make shell-api` | Opens bash inside API container |
 
 ---
 
@@ -149,3 +152,30 @@ docker compose down
 - Every ingest → upserts new/updated events (`ON CONFLICT (venue,title,start_date)`).  
 - Running multiple times does **not** duplicate rows.  
 - Scheduler automatically runs at 4 AM LA time and once at startup.
+
+---
+
+## 🌐 9. API Endpoints
+
+| Endpoint | Description |
+|-----------|-------------|
+| `/healthz` | Health + DB status summary |
+| `/events/today` | Returns events for the current day |
+| `/events/upcoming?limit=50` | Returns upcoming events |
+| `/events/past` | Returns past events |
+
+---
+
+## 💡 10. Development Tips
+
+- Use `make down` and `make up-dev` to restart cleanly.  
+- The `.env.dev` and `.env.prod` files separate credentials for local and production use.  
+- You can run the Vite frontend separately with:  
+  ```bash
+  cd frontend
+  npm run dev
+  ```
+
+---
+
+© 2025 InglewoodCrawler – Event ingestion and visualization stack for Inglewood venues.

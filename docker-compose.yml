@@ -1,54 +1,22 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16
     container_name: igw_db
-    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: postgres
-      ING_USER_PASSWORD: ${ING_USER_PASSWORD}
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: inglewood
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  ingest:
-    build: .
-    container_name: igw_ingest
-    depends_on:
-      - db
-    environment:
-      PG_DSN: postgresql://ing_user:${ING_USER_PASSWORD}@db:5432/inglewood
-      TZ: America/Los_Angeles
-    entrypoint: ["python", "ingest_pg.py"]
-    volumes:
-      - ./:/app:ro
-
-  scheduler:
-    build: .
-    container_name: igw_scheduler
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      PG_DSN: postgresql://ing_user:${ING_USER_PASSWORD}@db:5432/inglewood
-      TZ: America/Los_Angeles
-    volumes:
-      - ./:/app:ro
-    # Runs ingest once at startup, then every day at 04:00 LA
-    command: >
-      bash -lc "python -u ingest_pg.py >> /var/log/ingest.log 2>&1 || true;
-      exec supercronic /app/docker/crontab"
-    restart: unless-stopped
+      test: ["CMD-SHELL", "pg_isready -U postgres -d inglewood || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # Expose DB to host ONLY in dev
+    profiles: ["dev"]
+    ports:
+      - "5432:5432"
 
   api:
     build: .
@@ -57,16 +25,54 @@ services:
       db:
         condition: service_healthy
     environment:
-      PG_DSN: postgresql://ing_user:${ING_USER_PASSWORD}@db:5432/inglewood
       TZ: America/Los_Angeles
-      # comma-separated list of allowed web origins
-      ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:8080"
+      # Switch DSN by env file: dev uses ing_user (RW), prod uses ing_read (RO)
+      PG_DSN: ${PG_DSN}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      API_KEY: ${API_KEY}          # empty in dev, non-empty in prod to enforce key
     command: ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
     expose:
       - "8000"
-    # For local dev, expose a port. In prod, put Nginx/Caddy in front.
+    # Publish API port only in dev; in prod it sits behind the proxy
+    profiles: ["dev"]
     ports:
       - "8000:8000"
+    # Harden in prod (kept here so it applies in both)
+    read_only: true
+    tmpfs: ["/tmp"]
+
+  scheduler:
+    build: .
+    container_name: igw_scheduler
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: America/Los_Angeles
+      PG_DSN: ${PG_DSN}
+    volumes:
+      - ./:/app:ro
+    command: >
+      bash -lc "python -u ingest_pg.py >> /var/log/ingest.log 2>&1 || true;
+      exec supercronic /app/docker/crontab"
+
+  # Public reverse proxy only in prod
+  proxy:
+    image: caddy:2
+    container_name: igw_proxy
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    profiles: ["prod"]
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

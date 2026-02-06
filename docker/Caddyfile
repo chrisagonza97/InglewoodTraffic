@@ -1,0 +1,20 @@
+YOURDOMAIN.com {
+  encode zstd gzip
+  # Serve your built frontend (optional; point to a folder or S3/Netlify otherwise)
+  @api path /healthz* /events* /venues*
+  handle @api {
+    reverse_proxy igw_api:8000
+  }
+  handle {
+    # If you have a built SPA at /site
+    root * /srv/site
+    try_files {path} /index.html
+    file_server
+  }
+  header {
+    Strict-Transport-Security "max-age=31536000"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}
