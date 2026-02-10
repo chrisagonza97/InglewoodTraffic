@@ -63,6 +63,10 @@ Populate the database by running:
 ```bash
 docker compose run --rm --entrypoint bash ingest -lc "python -u ingest_pg.py"
 ```
+(this one works)
+```bash
+docker exec -it igw_scheduler python -u ingest_pg.py
+```
 
 You should see output like:
 ```

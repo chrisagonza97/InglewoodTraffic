@@ -389,74 +389,137 @@ def scrape_sofi_all(debug=False):
 
 
 # ---------------- KIA FORUM ----------------
+# ---------------- KIA FORUM (via Ticketmaster) ----------------
+# ---------------- KIA FORUM (via Ticketmaster) ----------------
 def scrape_kia_all(debug=False):
-    base = "https://thekiaforum.com"
+    """
+    Kia Forum via Ticketmaster venue page.
+    URL: https://www.ticketmaster.com/kia-forum-tickets-inglewood/venue/73750
+    """
+    base = "https://www.ticketmaster.com"
     robots = Robots(base)
     if not robots.load():
         if debug: print("[KIA] robots unreachable")
         return []
-    path = "/events/"
+    
+    path = "/kia-forum-tickets-inglewood/venue/73750"
     if not robots.can(path):
         if debug: print("[KIA] disallowed by robots")
         return []
-    html = polite_get(urljoin(base, path), robots.delay or 10, debug)  # Crawl-delay: 10
-    if not html: return []
+    
+    html = polite_get(urljoin(base, path), robots.delay or 1, debug)
+    if not html:
+        return []
+    
     soup = BeautifulSoup(html, "lxml")
-
-    cards = soup.select(".event-card, .single-list-event, .events-category__list-item, article:has(time.event-card__date)")
-    if debug: print(f"[KIA] cards: {len(cards)}")
-
+    
+    # Find the event list
+    event_list = soup.find("ul", {"data-testid": "eventList"})
+    if not event_list:
+        if debug: print("[KIA] event list not found")
+        return []
+    
+    cards = event_list.find_all("li", {"data-id": True})
+    if debug: print(f"[KIA/Ticketmaster] cards: {len(cards)}")
+    
     out = []
     today_d = datetime.now(LA_TZ).date()
+    
     for i, card in enumerate(cards):
-        # visible date like "October 23" (month + day)
-        vis_date = None
-        vis_node = card.select_one("time.event-card__date") or card.select_one("time")
-        if vis_node:
-            txt = vis_node.get_text(" ", strip=True)
-            # allow "Oct 23" / "October 23"
-            m = re.search(r"([A-Za-z]{3,})\s+(\d{1,2})", txt or "")
-            if m:
-                mon = month_abbrev_to_num(m.group(1))
-                day = int(m.group(2))
-                year = infer_year(mon, day, today_d)
-                # time may be elsewhere
-                t_el = card.select_one(".event-card__time, .time, time[datetime]")
-                ttxt = None
-                if t_el:
-                    ttxt = (t_el.get("datetime") if t_el.has_attr("datetime") else t_el.get_text(" ", strip=True)) or ""
-                if not (ttxt and re.search(r"\d", ttxt)):
-                    ttxt = "18:00"
-                vis_date = to_la(f"{year}-{mon:02d}-{day:02d} {ttxt}")
-
-        title_el = card.select_one("h2.event-card__title, .event-card__title a, h2")
+        # Extract event ID from data-id attribute
+        event_id = card.get("data-id", "")
+        
+        # Find the event link and title
+        link_el = card.select_one("a[href*='/event/']")
+        if not link_el:
+            if debug and i < 3:
+                print(f"  [KIA#{i}] no event link")
+            continue
+        
+        link = urljoin(base, link_el.get("href", ""))
+        
+        # Title is typically in a div with role="heading" or an h3/h2
+        title_el = (
+            card.select_one("div[role='heading']") or 
+            card.select_one("h3") or 
+            card.select_one("h2") or
+            link_el
+        )
         title = title_el.get_text(strip=True) if title_el else None
-        link_el = card.select_one("a[href]")
-        link = urljoin(base, link_el["href"]) if link_el else urljoin(base, path)
-
-        # prefer visible parsed date over stale datetime attribute
-        start = vis_date
-        if not start:
-            # final fallback: try datetime attr (but repair year if stale)
-            t_attr = vis_node.get("datetime") if (vis_node and vis_node.has_attr("datetime")) else None
-            if t_attr and re.search(r"\d{4}-\d{2}-\d{2}", t_attr):
-                dt = to_la(t_attr)
-                if dt and dt.date() < today_d:
-                    # bump to next year for past dates on an upcoming listing
-                    dt = dt.replace(year=dt.year + 1)
-                start = dt
-
-        if debug and i < 3:
-            print(f"  [KIA#{i}] title={title!r} start={start}")
-
+        
+        # Clean up title - remove "Find Tickets" prefix and date/time suffix
         if title:
+            # Remove "Find Tickets" prefix
+            title = re.sub(r'^Find\s*Tickets\s*', '', title, flags=re.IGNORECASE)
+            # Remove date/time suffix like ",2/13/26, 4:00 PM"
+            title = re.sub(r',\s*\d{1,2}/\d{1,2}/\d{2,4},\s*\d{1,2}:\d{2}\s*[AP]M\s*$', '', title)
+            title = title.strip()
+        
+        # Date and time parsing
+        # Look for date/time spans - Ticketmaster typically shows "Mon", "Feb 10", "7:30 PM"
+        date_spans = card.find_all("span")
+        date_text = " ".join([s.get_text(strip=True) for s in date_spans if s.get_text(strip=True)])
+        
+        if debug and i < 3:
+            print(f"  [KIA#{i}] raw date_text='{date_text[:100]}...'")
+        
+        # Try to extract date components
+        # Pattern 1: "Fri Feb 7 4:00 PM" or "Mon Mar 10 7:30 PM"
+        m = re.search(r'([A-Za-z]{3})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{1,2}:\d{2}\s*[AP]M)', date_text, re.IGNORECASE)
+        if not m:
+            # Pattern 2: Just "Feb 7" and "4:00 PM" separately
+            date_match = re.search(r'([A-Za-z]{3,9})\s+(\d{1,2})', date_text)
+            time_match = re.search(r'(\d{1,2}:\d{2}\s*[AP]M)', date_text, re.IGNORECASE)
+            if date_match:
+                mon_name = date_match.group(1)
+                day_str = date_match.group(2)
+                time_str = time_match.group(1) if time_match else None
+                
+                mon = month_abbrev_to_num(mon_name)
+                if mon:
+                    day = int(day_str)
+                    year = infer_year(mon, day, today_d)
+                    # Skip events with no time (like multi-day passes showing 12:00 AM)
+                    if not time_str or time_str.upper().startswith("12:00 AM"):
+                        if debug and i < 5:
+                            print(f"  [KIA#{i}] skipping - no valid time")
+                        continue
+                    start = to_la(f"{year}-{mon:02d}-{day:02d} {time_str}")
+                else:
+                    start = None
+            else:
+                start = None
+        else:
+            # Found full pattern
+            mon_name = m.group(2)
+            day_str = m.group(3)
+            time_str = m.group(4)
+            
+            mon = month_abbrev_to_num(mon_name)
+            if mon:
+                day = int(day_str)
+                year = infer_year(mon, day, today_d)
+                # Skip midnight times (usually multi-day passes)
+                if time_str.upper().startswith("12:00 AM"):
+                    if debug and i < 5:
+                        print(f"  [KIA#{i}] skipping - midnight time")
+                    continue
+                start = to_la(f"{year}-{mon:02d}-{day:02d} {time_str}")
+            else:
+                start = None
+        
+        if debug and i < 3:
+            print(f"  [KIA#{i}] title={title!r} start={start} link={link}")
+        
+        if title and start:
             out.append({
                 "venue": "Kia Forum",
                 "title": title,
-                "start_datetime_local": start.isoformat() if start else None,
+                "start_datetime_local": start.isoformat(),
                 "url": link,
                 "source": urljoin(base, path),
             })
+    
     return out
 
 # ---------------- main ----------------

@@ -3,4 +3,4 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 TZ=America/Los_Angeles
 
 # Daily ingest at 04:00 LA
-0 4 * * * cd /app && python ingest_pg.py >> /var/log/ingest.log 2>&1 && echo "[cron] Ingest OK $(date -Iseconds)" >> /var/log/ingest.log
+0 4 * * * cd /app && python -u ingest_pg.py >> /var/log/ingest.log 2>&1 && echo "[cron] Ingest OK $(date -Iseconds)" >> /var/log/ingest.log
