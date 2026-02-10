@@ -9,6 +9,14 @@ from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pytz import timezone
+from api_middleware import rate_limiter
+from fastapi import Request
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host
+    await rate_limiter.check_rate_limit(client_ip)
+    return await call_next(request)
 
 LA = timezone("America/Los_Angeles")
 PG_DSN = os.environ["PG_DSN"]  # e.g. postgresql://ing_user:...@db:5432/inglewood

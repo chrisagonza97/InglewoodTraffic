@@ -4,6 +4,7 @@ from datetime import datetime
 from dateutil import parser as dtparse
 from pytz import timezone
 from inglewood_events_cli import collect_events
+from scraper_lock import can_scrape, mark_scraped
 
 PG_DSN = os.getenv("PG_DSN")  # e.g. postgresql://ing_user:...@db:5432/inglewood
 LA = timezone("America/Los_Angeles")
@@ -19,6 +20,9 @@ def _to_la(iso):
     return d.astimezone(LA) if d.tzinfo else LA.localize(d)
 
 def ingest(venue="all", debug=False):
+    if not can_scrape():
+        print("[SKIP] Scraping too soon, waiting for cooldown")
+        return {"skipped": True}
     data = collect_events(venue=venue, debug=debug)
     rows = data["all"]
     with psycopg2.connect(PG_DSN) as conn, conn.cursor() as cur:
@@ -58,6 +62,7 @@ def ingest(venue="all", debug=False):
 
     ts2 = datetime.now(LA).isoformat(timespec="seconds")
     print(f"[{ts2}] ingest complete: processed={len(rows)}")
+    mark_scraped()
     return {"ingested": len(rows)}
 
 if __name__ == "__main__":
