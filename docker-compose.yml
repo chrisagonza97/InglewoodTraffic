@@ -14,7 +14,7 @@ services:
       timeout: 3s
       retries: 20
     # Expose DB to host ONLY in dev
-    profiles: ["dev"]
+    #profiles: ["dev"]
     ports:
       - "5432:5432"
 
@@ -26,18 +26,17 @@ services:
         condition: service_healthy
     environment:
       TZ: America/Los_Angeles
-      # Switch DSN by env file: dev uses ing_user (RW), prod uses ing_read (RO)
       PG_DSN: ${PG_DSN}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
-      API_KEY: ${API_KEY}          # empty in dev, non-empty in prod to enforce key
+      API_KEY: ${API_KEY}
     command: ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
     expose:
       - "8000"
     # Publish API port only in dev; in prod it sits behind the proxy
-    profiles: ["dev"]
+    #profiles: ["dev"]
     ports:
       - "8000:8000"
-    # Harden in prod (kept here so it applies in both)
+    # Harden in prod
     read_only: true
     tmpfs: ["/tmp"]
 
@@ -56,13 +55,27 @@ services:
       bash -lc "python -u ingest_pg.py >> /var/log/ingest.log 2>&1 || true;
       exec supercronic /app/docker/crontab"
 
+  # Frontend service (production only)
+  frontend:
+    build:
+      context: ./ing-frontend
+      dockerfile: Dockerfile
+    container_name: igw_frontend
+    profiles: ["prod"]
+    expose:
+      - "80"
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+
   # Public reverse proxy only in prod
   proxy:
     image: caddy:2
     container_name: igw_proxy
     depends_on:
-      api:
-        condition: service_started
+      - api
+      - frontend
     ports:
       - "80:80"
       - "443:443"

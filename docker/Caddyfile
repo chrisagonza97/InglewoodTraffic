@@ -1,20 +1,50 @@
-YOURDOMAIN.com {
+{
+  admin off
+}
+
+# For IP-based access (development/testing)
+:80 {
   encode zstd gzip
-  # Serve your built frontend (optional; point to a folder or S3/Netlify otherwise)
-  @api path /healthz* /events* /venues*
+  
+  # API endpoints
+  @api path /healthz* /events* /venues* /api*
   handle @api {
-    reverse_proxy igw_api:8000
+    uri strip_prefix /api
+    reverse_proxy api:8000
   }
+  
+  # Frontend - reverse proxy to nginx container
   handle {
-    # If you have a built SPA at /site
-    root * /srv/site
-    try_files {path} /index.html
-    file_server
+    reverse_proxy frontend:80
   }
+  
   header {
-    Strict-Transport-Security "max-age=31536000"
     X-Content-Type-Options "nosniff"
     X-Frame-Options "DENY"
     Referrer-Policy "strict-origin-when-cross-origin"
   }
 }
+
+# For domain-based access with SSL (uncomment and update domain when ready)
+# YOURDOMAIN.com {
+#   encode zstd gzip
+#   
+#   # API endpoints
+#   @api path /healthz* /events* /venues* /api*
+#   handle @api {
+#     uri strip_prefix /api
+#     reverse_proxy api:8000
+#   }
+#   
+#   # Frontend - reverse proxy to nginx container
+#   handle {
+#     reverse_proxy frontend:80
+#   }
+#   
+#   header {
+#     Strict-Transport-Security "max-age=31536000"
+#     X-Content-Type-Options "nosniff"
+#     X-Frame-Options "DENY"
+#     Referrer-Policy "strict-origin-when-cross-origin"
+#   }
+# }

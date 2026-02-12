@@ -12,6 +12,8 @@ from pytz import timezone
 from api_middleware import rate_limiter
 from fastapi import Request
 
+app = FastAPI()
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     client_ip = request.client.host
