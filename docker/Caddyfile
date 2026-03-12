@@ -5,11 +5,6 @@
 # For IP-based access (development/testing)
 :80 {
   encode zstd gzip
-
-  @static {
-    path *.js *.css *.png *.jpg *.svg *.ico *.woff *.woff2
-  }
-  header @static Cache-Control "public, max-age=31536000, immutable"
   
   # API endpoints
   @api path /healthz* /events* /venues* /api*
@@ -33,11 +28,6 @@
 # For domain-based access with SSL (uncomment and update domain when ready)
 ingl.events, www.ingl.events {
   encode zstd gzip
-
-  @static {
-    path *.js *.css *.png *.jpg *.svg *.ico *.woff *.woff2
-  }
-  header @static Cache-Control "public, max-age=31536000, immutable"
   
   # API endpoints
   @api path /healthz* /events* /venues* /api*
