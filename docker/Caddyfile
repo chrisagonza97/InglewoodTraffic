@@ -26,25 +26,24 @@
 }
 
 # For domain-based access with SSL (uncomment and update domain when ready)
-# YOURDOMAIN.com {
-#   encode zstd gzip
-#   
-#   # API endpoints
-#   @api path /healthz* /events* /venues* /api*
-#   handle @api {
-#     uri strip_prefix /api
-#     reverse_proxy api:8000
-#   }
-#   
-#   # Frontend - reverse proxy to nginx container
-#   handle {
-#     reverse_proxy frontend:80
-#   }
-#   
-#   header {
-#     Strict-Transport-Security "max-age=31536000"
-#     X-Content-Type-Options "nosniff"
-#     X-Frame-Options "DENY"
-#     Referrer-Policy "strict-origin-when-cross-origin"
-#   }
-# }
+ingl.events, www.ingl.events {
+  encode zstd gzip
+  
+  # API endpoints
+  @api path /healthz* /events* /venues* /api*
+  handle @api {
+    uri strip_prefix /api
+    reverse_proxy api:8000
+  }
+  
+  # Frontend - reverse proxy to nginx container
+  handle {
+    reverse_proxy frontend:80
+  }
+  
+  header {
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+}
