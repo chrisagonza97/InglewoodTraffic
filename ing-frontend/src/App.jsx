@@ -10,6 +10,8 @@ import "./index.css";
 import { useState, useMemo } from "react";
 import MapPanel from "./components/MapPanel";
 import { CUSTOM_CORRIDORS, directionsUrl } from "./maps/corridors";
+import StructuredData from "./components/StructuredData";
+
 
 const qc = new QueryClient();
 
@@ -51,7 +53,12 @@ function Page() {
   return (
     <main className="container">
       <header className="header">
-        <h1>Inglewood Events</h1>
+        <div className="header-content">
+          <h1>Inglewood Events</h1>
+          <p className="intro">
+            Live updates for SoFi Stadium, Kia Forum, and Intuit Dome
+          </p>
+        </div>
         <Toolbar onRefresh={refresh} isFetching={f1 || f2 || fW} />
       </header>
 
@@ -74,7 +81,7 @@ function Page() {
       {/*Map Traffic */}
       <section className="section">
         <div className="section-header">
-          <h2>Century Blvd and Praire Ave Traffic Map links</h2>
+          <h2>Traffic Map - Century Blvd & Prairie Ave</h2>
         </div>
 
         {Object.entries(CUSTOM_CORRIDORS).map(([id, c]) => {
@@ -124,7 +131,12 @@ function Page() {
       </Section>
 
       <footer className="footer">
-        <small>Times shown in America/Los_Angeles • Data cached client-side</small>
+        <small>
+          Inglewood Events - SoFi Stadium, Kia Forum, Intuit Dome • 
+          Live traffic alerts for Century Blvd & Prairie Ave • 
+          Times shown in America/Los_Angeles • 
+          Data cached client-side
+        </small>
       </footer>
     </main>
   );
