@@ -405,6 +405,7 @@ def scrape_kia_all(debug=False):
     Kia Forum via Ticketmaster Discovery API
     """
     import os
+    from datetime import timedelta
     
     api_key = os.getenv("TICKETMASTER_API_KEY")
     if not api_key:
@@ -434,8 +435,8 @@ def scrape_kia_all(debug=False):
     events = data.get("_embedded", {}).get("events", [])
     if debug: print(f"[KIA API] Found {len(events)} events")
     
-    # Deduplicate by exact datetime - keep longer title
-    seen = {}
+    # Deduplicate: same date + time within 2 hours
+    out = []
     for event in events:
         title = event.get("name", "").strip()
         start_data = event.get("dates", {}).get("start", {})
@@ -449,20 +450,34 @@ def scrape_kia_all(debug=False):
         if not dt:
             continue
         
-        # Use full datetime as key (not just date)
-        key = dt.isoformat()
+        event_dict = {
+            "venue": "Kia Forum",
+            "title": title,
+            "start_datetime_local": dt.isoformat(),
+            "url": event_url or "https://www.ticketmaster.com/kia-forum-tickets-inglewood/venue/73750",
+            "source": "Ticketmaster Discovery API",
+        }
         
-        # Prefer longer, more descriptive titles
-        if key not in seen or len(title) > len(seen[key]["title"]):
-            seen[key] = {
-                "venue": "Kia Forum",
-                "title": title,
-                "start_datetime_local": dt.isoformat(),
-                "url": event_url or "https://www.ticketmaster.com/kia-forum-tickets-inglewood/venue/73750",
-                "source": "Ticketmaster Discovery API",
-            }
-    
-    out = list(seen.values())
+        # Check if duplicate (same date + within 2 hours)
+        is_duplicate = False
+        for existing in out:
+            existing_dt = dtparse.parse(existing["start_datetime_local"])
+            
+            # Same date and within 2 hours?
+            if existing_dt.date() == dt.date():
+                time_diff = abs((existing_dt - dt).total_seconds() / 3600)  # hours
+                
+                if time_diff <= 2:
+                    is_duplicate = True
+                    # Keep the one with longer title
+                    if len(title) > len(existing["title"]):
+                        existing["title"] = title
+                        existing["start_datetime_local"] = dt.isoformat()
+                        existing["url"] = event_url or existing["url"]
+                    break
+        
+        if not is_duplicate:
+            out.append(event_dict)
     
     if debug:
         print(f"[KIA API] After dedup: {len(out)} unique events")
