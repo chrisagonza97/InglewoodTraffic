@@ -434,7 +434,7 @@ def scrape_kia_all(debug=False):
     events = data.get("_embedded", {}).get("events", [])
     if debug: print(f"[KIA API] Found {len(events)} events")
     
-    # Deduplicate by (title, date) - ignore time
+    # Deduplicate by exact datetime - keep longer title
     seen = {}
     for event in events:
         title = event.get("name", "").strip()
@@ -449,9 +449,8 @@ def scrape_kia_all(debug=False):
         if not dt:
             continue
         
-        # Use date (not time) + normalized title as key
-        # This treats same event at different times as duplicates
-        key = (dt.date().isoformat(), title.upper().strip())
+        # Use full datetime as key (not just date)
+        key = dt.isoformat()
         
         # Prefer longer, more descriptive titles
         if key not in seen or len(title) > len(seen[key]["title"]):
