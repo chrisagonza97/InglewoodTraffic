@@ -493,12 +493,20 @@ def main():
         all_events.extend(scrape_kia_all(debug=args.debug))
 
     # de-dup ALL by (venue, title, date)
-    seen = set()
-    dedup_all = []
+    seen = {}
     for ev in all_events:
-        k = (ev.get("venue"), ev.get("title"), (ev.get("start_datetime_local") or "")[:10])
-        if k in seen: continue
-        seen.add(k); dedup_all.append(ev)
+        title = (ev.get("title") or "").strip()
+        date_str = (ev.get("start_datetime_local") or "")[:10]
+        venue_name = ev.get("venue")
+        
+        # Case-insensitive key
+        key = (venue_name, title.upper(), date_str)
+        
+        # Keep the event with the longer title
+        if key not in seen or len(title) > len(seen[key]["title"]):
+            seen[key] = ev
+
+    dedup_all = list(seen.values())
 
     # filter TODAY
     today_events = []
@@ -518,7 +526,6 @@ def main():
     print(json.dumps(data, indent=2 if args.pretty else None, ensure_ascii=False))
 
 def collect_events(venue="all", debug=False):
-    # reuse your existing logic verbatim
     target_date = la_today(None)
 
     all_events = []
@@ -529,15 +536,21 @@ def collect_events(venue="all", debug=False):
     if venue in ("kia","all"):
         all_events.extend(scrape_kia_all(debug=debug))
 
-    # de-dup
-    seen = set()
-    dedup_all = []
+    # de-dup by (venue, UPPERCASE title, date) - prefer longer titles
+    seen = {}
     for ev in all_events:
-        k = (ev.get("venue"), ev.get("title"), (ev.get("start_datetime_local") or "")[:10])
-        if k in seen: 
-            continue
-        seen.add(k)
-        dedup_all.append(ev)
+        title = (ev.get("title") or "").strip()
+        date_str = (ev.get("start_datetime_local") or "")[:10]
+        venue_name = ev.get("venue")
+        
+        # Case-insensitive key
+        key = (venue_name, title.upper(), date_str)
+        
+        # Keep the event with the longer title
+        if key not in seen or len(title) > len(seen[key]["title"]):
+            seen[key] = ev
+    
+    dedup_all = list(seen.values())
 
     # filter TODAY
     today_events = []
