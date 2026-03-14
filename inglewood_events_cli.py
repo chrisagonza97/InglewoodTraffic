@@ -414,7 +414,7 @@ def scrape_kia_all(debug=False):
     # API endpoint
     url = "https://app.ticketmaster.com/discovery/v2/events.json"
     params = {
-        "venueId": "KovZpZAEkn6A",  # Kia Forum venue ID
+        "venueId": "KovZpZAEkn6A",  # Kia Forum
         "apikey": api_key,
         "size": 200,
         "sort": "date,asc",
@@ -434,31 +434,40 @@ def scrape_kia_all(debug=False):
     events = data.get("_embedded", {}).get("events", [])
     if debug: print(f"[KIA API] Found {len(events)} events")
     
-    out = []
+    # Deduplicate by (date, time) - keep the one with better title
+    seen = {}
     for event in events:
         title = event.get("name", "").strip()
-        
-        # Get datetime
         start_data = event.get("dates", {}).get("start", {})
         datetime_str = start_data.get("dateTime")
-        
-        # Get event URL
         event_url = event.get("url")
         
-        if title and datetime_str:
-            # Convert to LA timezone
-            dt = to_la(datetime_str)
-            
-            out.append({
+        if not title or not datetime_str:
+            continue
+        
+        dt = to_la(datetime_str)
+        if not dt:
+            continue
+        
+        # Use date+time as key for deduplication
+        key = dt.isoformat()
+        
+        # Prefer longer, more descriptive titles
+        if key not in seen or len(title) > len(seen[key]["title"]):
+            seen[key] = {
                 "venue": "Kia Forum",
                 "title": title,
-                "start_datetime_local": dt.isoformat() if dt else None,
+                "start_datetime_local": dt.isoformat(),
                 "url": event_url or "https://www.ticketmaster.com/kia-forum-tickets-inglewood/venue/73750",
                 "source": "Ticketmaster Discovery API",
-            })
-        
-        if debug and len(out) < 5:
-            print(f"  [KIA API] {title} @ {dt.isoformat() if dt else None}")
+            }
+    
+    out = list(seen.values())
+    
+    if debug:
+        print(f"[KIA API] After dedup: {len(out)} unique events")
+        for i, ev in enumerate(out[:5]):
+            print(f"  [KIA API] {ev['title']} @ {ev['start_datetime_local']}")
     
     return out
 
