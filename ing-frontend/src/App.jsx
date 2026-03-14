@@ -10,7 +10,7 @@ import "./index.css";
 import { useState, useMemo } from "react";
 import MapPanel from "./components/MapPanel";
 import { CUSTOM_CORRIDORS, directionsUrl } from "./maps/corridors";
-import StructuredData from "./components/StructuredData";
+import  StructuredData, {WebSiteSchema } from "./components/StructuredData";
 
 
 const qc = new QueryClient();
@@ -52,6 +52,8 @@ function Page() {
 
   return (
     <main className="container">
+      <WebSiteSchema />
+      <StructuredData events={upcoming} />
       <header className="header">
         <div className="header-content">
           <h1>Inglewood Events</h1>

@@ -30,6 +30,7 @@ services:
       PG_DSN: ${PG_DSN}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       API_KEY: ${API_KEY}
+      TICKETMASTER_API_KEY: ${TICKETMASTER_API_KEY}
     command: ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
     expose:
       - "8000"
@@ -50,6 +51,7 @@ services:
     environment:
       TZ: America/Los_Angeles
       PG_DSN: ${PG_DSN}
+      TICKETMASTER_API_KEY: ${TICKETMASTER_API_KEY}
     volumes:
       - ./:/app:ro
     command: >

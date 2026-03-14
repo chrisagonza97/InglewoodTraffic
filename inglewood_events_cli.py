@@ -4,7 +4,7 @@
 #  - Kia Forum: ignore stale years in datetime attr; infer year from visible date.
 #  - SoFi/Intuit: broader selectors, try all candidate pages, no early break.
 
-import argparse, json, re, time
+import argparse, json, re, time, os
 from datetime import datetime, date
 from urllib.parse import urljoin
 from urllib.parse import urlparse
@@ -16,6 +16,17 @@ from dateutil import parser as dtparse
 
 UA = "TrafficEventsBot/1.0 (+https://example.com/contact)"
 LA_TZ = pytz.timezone("America/Los_Angeles")
+
+from pathlib import Path
+env_file = Path(__file__).parent / ".env.dev"
+if env_file.exists():
+    with open(env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip())
+
 
 # ---------------- time helpers ----------------
 def la_today(s=None) -> date:
@@ -388,137 +399,66 @@ def scrape_sofi_all(debug=False):
     return out
 
 
-# ---------------- KIA FORUM ----------------
-# ---------------- KIA FORUM (via Ticketmaster) ----------------
-# ---------------- KIA FORUM (via Ticketmaster) ----------------
+# ---------------- KIA FORUM (via Ticketmaster Official API) ----------------
 def scrape_kia_all(debug=False):
     """
-    Kia Forum via Ticketmaster venue page.
-    URL: https://www.ticketmaster.com/kia-forum-tickets-inglewood/venue/73750
+    Kia Forum via Ticketmaster Discovery API
     """
-    base = "https://www.ticketmaster.com"
-    robots = Robots(base)
-    if not robots.load():
-        if debug: print("[KIA] robots unreachable")
+    import os
+    
+    api_key = os.getenv("TICKETMASTER_API_KEY")
+    if not api_key:
+        if debug: print("[KIA] No TICKETMASTER_API_KEY env var")
         return []
     
-    path = "/kia-forum-tickets-inglewood/venue/73750"
-    if not robots.can(path):
-        if debug: print("[KIA] disallowed by robots")
+    # API endpoint
+    url = "https://app.ticketmaster.com/discovery/v2/events.json"
+    params = {
+        "venueId": "KovZpZAEkn6A",  # Kia Forum venue ID
+        "apikey": api_key,
+        "size": 200,
+        "sort": "date,asc",
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=15)
+        if response.status_code != 200:
+            if debug: print(f"[KIA API] HTTP {response.status_code}")
+            return []
+        
+        data = response.json()
+    except Exception as e:
+        if debug: print(f"[KIA API] Error: {e}")
         return []
     
-    html = polite_get(urljoin(base, path), robots.delay or 1, debug)
-    if not html:
-        return []
-    
-    soup = BeautifulSoup(html, "lxml")
-    
-    # Find the event list
-    event_list = soup.find("ul", {"data-testid": "eventList"})
-    if not event_list:
-        if debug: print("[KIA] event list not found")
-        return []
-    
-    cards = event_list.find_all("li", {"data-id": True})
-    if debug: print(f"[KIA/Ticketmaster] cards: {len(cards)}")
+    events = data.get("_embedded", {}).get("events", [])
+    if debug: print(f"[KIA API] Found {len(events)} events")
     
     out = []
-    today_d = datetime.now(LA_TZ).date()
-    
-    for i, card in enumerate(cards):
-        # Extract event ID from data-id attribute
-        event_id = card.get("data-id", "")
+    for event in events:
+        title = event.get("name", "").strip()
         
-        # Find the event link and title
-        link_el = card.select_one("a[href*='/event/']")
-        if not link_el:
-            if debug and i < 3:
-                print(f"  [KIA#{i}] no event link")
-            continue
+        # Get datetime
+        start_data = event.get("dates", {}).get("start", {})
+        datetime_str = start_data.get("dateTime")
         
-        link = urljoin(base, link_el.get("href", ""))
+        # Get event URL
+        event_url = event.get("url")
         
-        # Title is typically in a div with role="heading" or an h3/h2
-        title_el = (
-            card.select_one("div[role='heading']") or 
-            card.select_one("h3") or 
-            card.select_one("h2") or
-            link_el
-        )
-        title = title_el.get_text(strip=True) if title_el else None
-        
-        # Clean up title - remove "Find Tickets" prefix and date/time suffix
-        if title:
-            # Remove "Find Tickets" prefix
-            title = re.sub(r'^Find\s*Tickets\s*', '', title, flags=re.IGNORECASE)
-            # Remove date/time suffix like ",2/13/26, 4:00 PM"
-            title = re.sub(r',\s*\d{1,2}/\d{1,2}/\d{2,4},\s*\d{1,2}:\d{2}\s*[AP]M\s*$', '', title)
-            title = title.strip()
-        
-        # Date and time parsing
-        # Look for date/time spans - Ticketmaster typically shows "Mon", "Feb 10", "7:30 PM"
-        date_spans = card.find_all("span")
-        date_text = " ".join([s.get_text(strip=True) for s in date_spans if s.get_text(strip=True)])
-        
-        if debug and i < 3:
-            print(f"  [KIA#{i}] raw date_text='{date_text[:100]}...'")
-        
-        # Try to extract date components
-        # Pattern 1: "Fri Feb 7 4:00 PM" or "Mon Mar 10 7:30 PM"
-        m = re.search(r'([A-Za-z]{3})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{1,2}:\d{2}\s*[AP]M)', date_text, re.IGNORECASE)
-        if not m:
-            # Pattern 2: Just "Feb 7" and "4:00 PM" separately
-            date_match = re.search(r'([A-Za-z]{3,9})\s+(\d{1,2})', date_text)
-            time_match = re.search(r'(\d{1,2}:\d{2}\s*[AP]M)', date_text, re.IGNORECASE)
-            if date_match:
-                mon_name = date_match.group(1)
-                day_str = date_match.group(2)
-                time_str = time_match.group(1) if time_match else None
-                
-                mon = month_abbrev_to_num(mon_name)
-                if mon:
-                    day = int(day_str)
-                    year = infer_year(mon, day, today_d)
-                    # Skip events with no time (like multi-day passes showing 12:00 AM)
-                    if not time_str or time_str.upper().startswith("12:00 AM"):
-                        if debug and i < 5:
-                            print(f"  [KIA#{i}] skipping - no valid time")
-                        continue
-                    start = to_la(f"{year}-{mon:02d}-{day:02d} {time_str}")
-                else:
-                    start = None
-            else:
-                start = None
-        else:
-            # Found full pattern
-            mon_name = m.group(2)
-            day_str = m.group(3)
-            time_str = m.group(4)
+        if title and datetime_str:
+            # Convert to LA timezone
+            dt = to_la(datetime_str)
             
-            mon = month_abbrev_to_num(mon_name)
-            if mon:
-                day = int(day_str)
-                year = infer_year(mon, day, today_d)
-                # Skip midnight times (usually multi-day passes)
-                if time_str.upper().startswith("12:00 AM"):
-                    if debug and i < 5:
-                        print(f"  [KIA#{i}] skipping - midnight time")
-                    continue
-                start = to_la(f"{year}-{mon:02d}-{day:02d} {time_str}")
-            else:
-                start = None
-        
-        if debug and i < 3:
-            print(f"  [KIA#{i}] title={title!r} start={start} link={link}")
-        
-        if title and start:
             out.append({
                 "venue": "Kia Forum",
                 "title": title,
-                "start_datetime_local": start.isoformat(),
-                "url": link,
-                "source": urljoin(base, path),
+                "start_datetime_local": dt.isoformat() if dt else None,
+                "url": event_url or "https://www.ticketmaster.com/kia-forum-tickets-inglewood/venue/73750",
+                "source": "Ticketmaster Discovery API",
             })
+        
+        if debug and len(out) < 5:
+            print(f"  [KIA API] {title} @ {dt.isoformat() if dt else None}")
     
     return out
 

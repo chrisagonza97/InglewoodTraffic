@@ -36,3 +36,21 @@ export default function StructuredData({ events }) {
       />
     );
   }
+
+  export function WebSiteSchema() {
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Inglewood Events",
+      "alternateName": "ingl.events", 
+      "url": "https://ingl.events",
+      "description": "Live event calendar and traffic alerts for SoFi Stadium, Kia Forum, and Intuit Dome"
+    };
+  
+    return (
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+    );
+  }
