@@ -18,7 +18,7 @@ UA = "TrafficEventsBot/1.0 (+https://example.com/contact)"
 LA_TZ = pytz.timezone("America/Los_Angeles")
 
 from pathlib import Path
-env_file = Path(__file__).parent / ".env.dev"
+env_file = Path(__file__).parent / ".env.prod"
 if env_file.exists():
     with open(env_file) as f:
         for line in f:
