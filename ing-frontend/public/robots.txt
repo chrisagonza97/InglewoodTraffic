@@ -1,6 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: https://ingl.events/sitemap.xml
 
-# Allow API endpoints for search engines
-Allow: /api/events/
+Sitemap: https://ingl.events/sitemap.xml
