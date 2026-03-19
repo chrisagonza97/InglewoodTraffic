@@ -7,12 +7,29 @@ import psycopg2
 import psycopg2.extras
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 from pytz import timezone
 from api_middleware import rate_limiter
 from fastapi import Request
 
 app = FastAPI()
+
+@app.get("/sitemap.xml", response_class=Response)
+async def sitemap():
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    sitemap_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://ingl.events/</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>"""
+    
+    return Response(content=sitemap_xml, media_type="application/xml")
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
