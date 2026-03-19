@@ -1,6 +1,12 @@
 # Inglewood Events Tracker
 
+🌐 **Live Site:** [ingl.events](https://ingl.events)  
+📊 **Status:** Production  
+⭐ **Open Source**
+
 A real-time event aggregation and traffic advisory system for Inglewood's three major venues: **Kia Forum**, **SoFi Stadium**, and **Intuit Dome**. Helps locals and commuters avoid traffic congestion by tracking upcoming events and providing traffic alerts.
+
+**[View Live Demo →](https://ingl.events)**
 
 ---
 
