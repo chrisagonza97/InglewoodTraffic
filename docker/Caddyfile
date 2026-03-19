@@ -11,8 +11,10 @@
   }
   header @static Cache-Control "public, max-age=31536000, immutable"
 
-  # Sitemap from API
-  reverse_proxy /sitemap.xml api:8000
+  # Sitemap from API 
+  handle /sitemap.xml {
+    reverse_proxy api:8000
+  }
   
   # API endpoints
   @api path /healthz* /events* /venues* /api*
@@ -43,7 +45,9 @@ ingl.events, www.ingl.events {
   header @static Cache-Control "public, max-age=31536000, immutable"
 
   # Sitemap from API 
-  reverse_proxy /sitemap.xml api:8000
+  handle /sitemap.xml {
+    reverse_proxy api:8000
+  }
   
   # API endpoints
   @api path /healthz* /events* /venues* /api*
