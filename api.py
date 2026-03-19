@@ -15,22 +15,6 @@ from fastapi import Request
 
 app = FastAPI(title="Inglewood Events API", version="1.0.0")
 
-@app.get("/sitemap.xml", response_class=Response)
-async def sitemap():
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    sitemap_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://ingl.events/</loc>
-    <lastmod>{today}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>"""
-    
-    return Response(content=sitemap_xml, media_type="application/xml")
-
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     client_ip = request.client.host
@@ -69,6 +53,22 @@ def q(sql: str, params: tuple = (), fetch: str = "all"):
             row = cur.fetchone()
             return list(row.values())[0] if row else None
         return [dict(r) for r in cur.fetchall()]
+
+@app.get("/sitemap.xml", response_class=Response)
+async def sitemap():
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    sitemap_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://ingl.events/</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>"""
+    
+    return Response(content=sitemap_xml, media_type="application/xml")
 
 @app.get("/healthz")
 def healthz():
