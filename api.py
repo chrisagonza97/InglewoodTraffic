@@ -13,7 +13,7 @@ from pytz import timezone
 from api_middleware import rate_limiter
 from fastapi import Request
 
-app = FastAPI()
+app = FastAPI(title="Inglewood Events API", version="1.0.0")
 
 @app.get("/sitemap.xml", response_class=Response)
 async def sitemap():
@@ -42,7 +42,6 @@ PG_DSN = os.environ["PG_DSN"]  # e.g. postgresql://ing_user:...@db:5432/inglewoo
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:8080").split(",")
 
-app = FastAPI(title="Inglewood Events API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
